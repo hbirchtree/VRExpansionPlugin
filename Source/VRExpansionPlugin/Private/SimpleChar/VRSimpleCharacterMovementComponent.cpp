@@ -54,33 +54,15 @@ UVRSimpleCharacterMovementComponent::UVRSimpleCharacterMovementComponent(const F
 	bIsFirstTick = true;
 	//LastAdditionalVRInputVector = FVector::ZeroVector;
 	AdditionalVRInputVector = FVector::ZeroVector;	
-	CustomVRInputVector = FVector::ZeroVector;
 
 	//bMaintainHorizontalGroundVelocity = true;
 }
 
-void UVRSimpleCharacterMovementComponent::AddCustomReplicatedMovement(FVector Movement)
-{
-	CustomVRInputVector += Movement;
-}
 
 void UVRSimpleCharacterMovementComponent::ApplyVRMotionToVelocity(float deltaTime)
 {
-	LastPreAdditiveVRVelocity = (AdditionalVRInputVector) / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick	
+	LastPreAdditiveVRVelocity = AdditionalVRInputVector / deltaTime;// Velocity; // Save off pre-additive Velocity for restoration next tick
 	Velocity += LastPreAdditiveVRVelocity;
-
-	// Switch to Falling if we have vertical velocity from root motion so we can lift off the ground
-	if( !LastPreAdditiveVRVelocity.IsNearlyZero() && LastPreAdditiveVRVelocity.Z != 0.f && IsMovingOnGround() )
-	{
-		float LiftoffBound;
-		// Default bounds - the amount of force gravity is applying this tick
-		LiftoffBound = FMath::Max(GetGravityZ() * deltaTime, SMALL_NUMBER);
-
-		if(LastPreAdditiveVRVelocity.Z > LiftoffBound )
-		{
-			SetMovementMode(MOVE_Falling);
-		}
-	}
 }
 
 void UVRSimpleCharacterMovementComponent::RestorePreAdditiveVRMotionVelocity()
@@ -813,10 +795,7 @@ void UVRSimpleCharacterMovementComponent::TickComponent(float DeltaTime, enum EL
 				DifferenceFromLastFrame.Z = 0.0f;
 
 				if (VRRootCapsule)
-					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame) + CustomVRInputVector; // Apply over a second
-				
-				// Null out the custom vr input vector.
-				CustomVRInputVector = FVector::ZeroVector;
+					AdditionalVRInputVector = VRRootCapsule->GetComponentRotation().RotateVector(DifferenceFromLastFrame); // Apply over a second
 			}
 			else
 			{
@@ -1221,12 +1200,8 @@ void FSavedMove_VRSimpleCharacter::SetInitialPosition(ACharacter* C)
 		
 		if (VRC->VRMovementReference)
 		{
-			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector + VRC->VRMovementReference->CustomVRInputVector;
-
-			if (VRC->VRMovementReference->HasRequestedVelocity())
-				RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
-			else
-				RequestedVelocity = FVector::ZeroVector;
+			LFDiff = VRC->VRMovementReference->AdditionalVRInputVector;
+			RequestedVelocity = VRC->VRMovementReference->RequestedVelocity;
 		}
 		else
 		{
